@@ -10,7 +10,7 @@ router.post(
     let data = await http.post("account/ssologin", req.body);
     console.log(data);
     localStorage.setItem("admin_token", data.token);
-    res.sendStatus(200).send(data);
+    res.send(data);
     return;
   })
 );
