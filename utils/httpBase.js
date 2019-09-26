@@ -21,8 +21,10 @@ const ajax = (method, isDownload = false) => {
         .then(response => {
           if (!isDownload) {
             if (response && response.data) {
-              if (response.data.failed) {
-                showStateError(response);
+              if (
+                response.data.status === false ||
+                response.data.Status === false
+              ) {
                 reject(response.data);
                 // needLoading && store.commit("hideLoading");
                 return;
@@ -46,6 +48,7 @@ const ajax = (method, isDownload = false) => {
           }
         })
         .catch(error => {
+          error.message = "系统错误，请联系管理员！";
           reject(error);
         });
     });
@@ -63,34 +66,6 @@ function formatParams(params) {
     delete _params.pagination;
   }
   return _params;
-}
-
-function showStateError(response) {
-  console.log(response.status);
-  if (!response) {
-    showMessage("系统错误，请联系管理员");
-    return;
-  }
-  let message = response.data.message;
-  switch (response.status) {
-    case 200:
-      showMessage(message);
-      break;
-    case 400:
-      showMessage(message);
-      return Promise.reject(response);
-    case 401:
-      // goMainLogin();
-      break;
-    case 404:
-      showMessage(message);
-      break;
-    case 500:
-      showMessage(message);
-      break;
-    default:
-      showMessage("系统错误，请联系管理员");
-  }
 }
 const showMessage = message => {
   // alert("message");

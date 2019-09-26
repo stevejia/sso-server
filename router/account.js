@@ -25,7 +25,7 @@ router.get(
     var data = await http.get("account/CheckLogin", { oldToken: token });
     var newToken = data.Data.newToken;
     localStorage.setItem("admin_token", newToken);
-    res.sendStatus(200);
+    res.send(data);
     return;
   })
 );
@@ -35,7 +35,7 @@ router.post(
     var token = localStorage.getItem("admin_token");
     await http.get("account/CheckLogin", { oldToken: token });
     localStorage.removeItem("admin_token");
-    res.sendStatus(200);
+    res.send();
     return;
   })
 );

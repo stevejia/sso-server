@@ -4,6 +4,6 @@ let wrap = fn => (...args) =>
     let res = args[1];
     var response = err.response || {};
     var status = response.status || 500;
-    return res.sendStatus(status).send(errorMessage);
+    return res.status(status).send({ message: errorMessage });
   });
 module.exports = exports = wrap;
