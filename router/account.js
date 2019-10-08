@@ -5,9 +5,9 @@ const { LocalStorage } = require("node-localstorage");
 const localStorage = new LocalStorage("./auth");
 const http = require("../utils/http");
 router.post(
-  "/ssologin",
+  "/login",
   wrap(async function(req, res) {
-    let data = await http.post("account/ssologin", req.body);
+    let data = await http.post("sso/login", req.body);
     console.log(data);
     localStorage.setItem("admin_token", data.token);
     res.send(data);
@@ -22,7 +22,7 @@ router.get(
       res.sendStatus(401);
       return;
     }
-    var data = await http.get("account/CheckLogin", { oldToken: token });
+    var data = await http.get("sso/check", { oldToken: token });
     var newToken = data.Data.newToken;
     localStorage.setItem("admin_token", newToken);
     res.send(data);
@@ -32,10 +32,8 @@ router.get(
 router.post(
   "/logout",
   wrap(async function(req, res) {
-    var token = localStorage.getItem("admin_token");
-    await http.get("account/CheckLogin", { oldToken: token });
     localStorage.removeItem("admin_token");
-    res.send();
+    res.sendStatus(401);
     return;
   })
 );
