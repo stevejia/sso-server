@@ -5,7 +5,7 @@ const ajax = (method, isDownload = false) => {
       //   needLoading && store.commit("showLoading");
       let config = {
         method: method,
-        url: `http://localhost:55713/${url}`
+        url: `api/${url}`
       };
       if (method === "post") {
         config["data"] = params;
