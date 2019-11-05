@@ -13,4 +13,5 @@ auth/*
 .vscode
 .vscode/*
 data
-data/*
+data/
+
