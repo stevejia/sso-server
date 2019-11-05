@@ -77,7 +77,7 @@ router.get(
       d.showReplies = false;
       d.replies = _.filter(chidList, r => {
         r.show = false;
-        return +r.parentId === +d.userId;
+        return +r.parentId === +d.id;
       });
     });
     res.status(200).send({ list: rootList });
