@@ -4,9 +4,12 @@ const wrap = require("../util/asyncErrorHandler");
 const { LocalStorage } = require("node-localstorage");
 const localStorage = new LocalStorage("./auth");
 const http = require("../utils/http");
-const fs = require("fs");
+// const fs = require("fs");
+const fs = require("../util/fsUtil");
 const _ = require("lodash");
 const tokenGen = require("../util/token");
+
+const YUAN_CHUANG = 1;
 router.post(
   "/login",
   wrap(async function(req, res) {
@@ -87,4 +90,63 @@ router.post(
     return;
   })
 );
+
+router.get(
+  "/getByArticleId",
+  wrap(async function(req, res) {
+    let list = fs.read("articles");
+    let item = _.find(list, d => {
+      return d.id === +req.query.id;
+    });
+    let userId = item.creatorId;
+    let userList = fs.read("userList");
+    let user = _.find(userList, d => {
+      return +d.id === +userId;
+    });
+    let userArticleList = _.filter(list, d => {
+      return d.creatorId === userId;
+    });
+
+    let newestArticles = _.chain(userArticleList)
+      .sortBy("createTime")
+      .reverse()
+      .filter((d, i) => {
+        return i < 5;
+      })
+      .value();
+    let originalCount = userArticleList.filter(d => {
+      return +d.articleType === YUAN_CHUANG;
+    }).length;
+    res.status(200).send({ newestArticles, originalCount, user });
+    return;
+  })
+);
+router.get(
+  "/getById",
+  wrap(async function(req, res) {
+    let list = fs.read("articles");
+    let userId = req.query.id;
+    let userList = fs.read("userList");
+    let user = _.find(userList, d => {
+      return +d.id === +userId;
+    });
+    let userArticleList = _.filter(list, d => {
+      return d.creatorId === userId;
+    });
+
+    let newestArticles = _.chain(userArticleList)
+      .sortBy("createTime")
+      .reverse()
+      .filter((d, i) => {
+        return i < 5;
+      })
+      .value();
+    let originalCount = userArticleList.filter(d => {
+      return +d.articleType === YUAN_CHUANG;
+    }).length;
+    res.status(200).send({ newestArticles, originalCount, user });
+    return;
+  })
+);
+
 module.exports = exports = router;

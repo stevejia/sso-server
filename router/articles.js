@@ -31,6 +31,15 @@ router.get(
   "/list",
   wrap(async function(req, res) {
     let list = fs.read(fileName);
+    let query = req.query;
+    list = _.chain(list)
+      .filter(d => {
+        return !query.creatorId || d.creatorId == query.creatorId;
+      })
+      .filter(d => {
+        return !query.articleType || d.articleType == query.articleType;
+      })
+      .value();
     res.status(200).send({ list });
     return;
   })
