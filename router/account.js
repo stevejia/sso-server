@@ -10,15 +10,12 @@ const _ = require("lodash");
 const tokenGen = require("../util/token");
 
 const YUAN_CHUANG = 1;
+const fileName = "userList";
 router.post(
   "/login",
   wrap(async function(req, res) {
-    let exists = fs.existsSync("./data/userList.json");
-    let userList = [];
     let user = req.body;
-    if (exists) {
-      userList = JSON.parse(fs.readFileSync("./data/userList.json"));
-    }
+    const userList = fs.read(fileName);
     let userForLogin = _.find(userList, function(d) {
       return d.name === user.name;
     });
@@ -42,25 +39,20 @@ router.post(
 router.post(
   "/register",
   wrap(async function(req, res) {
-    let exists = fs.existsSync("./data/userList.json");
-    let userList = [];
     let user = req.body;
-    if (!exists) {
-      user["id"] = 1;
-      userList.push(user);
-    } else {
-      userList = JSON.parse(fs.readFileSync("./data/userList.json"));
-      let existUser = _.find(userList, function(d) {
-        return d.name === user.name;
-      });
-      if (!!existUser) {
-        res.status(500).send("用户名已存在");
-        return;
-      }
-      user["id"] = userList.length + 1;
-      userList.push(user);
+    const userList = fs.read(fileName);
+    let existUser = _.find(userList, function(d) {
+      return d.name === user.name;
+    });
+    if (!!existUser) {
+      res.status(500).send("用户名已存在");
+      return;
     }
-    fs.writeFileSync("./data/userList.json", JSON.stringify(userList));
+    user["id"] = userList.length + 1;
+    userList.push(user);
+    fs.insert(fileName, user, list => {
+      console.log("aaaa");
+    });
     res.status(200).send();
     return;
   })
@@ -117,7 +109,12 @@ router.get(
     let originalCount = userArticleList.filter(d => {
       return +d.articleType === YUAN_CHUANG;
     }).length;
-    res.status(200).send({ newestArticles, originalCount, user });
+
+    let subscribeList = fs.read("subscribe");
+    let userSubList = _.filter(subscribeList, d => {
+      return d.id == userId;
+    });
+    res.status(200).send({ newestArticles, originalCount, user, userSubList });
     return;
   })
 );
@@ -145,6 +142,28 @@ router.get(
       return +d.articleType === YUAN_CHUANG;
     }).length;
     res.status(200).send({ newestArticles, originalCount, user });
+    return;
+  })
+);
+
+router.post(
+  "/follow",
+  wrap(async function(req, res) {
+    fs.insert("subscribe", req.body);
+    res.sendStatus(200);
+    return;
+  })
+);
+router.post(
+  "/unfollow",
+  wrap(async function(req, res) {
+    let id = req.body.id;
+    let item = fs.get("subscribe", id);
+    item["isDeleted"] = true;
+    fs.update("subscribe", item, list => {
+      //TODO::
+    });
+    res.sendStatus(200);
     return;
   })
 );

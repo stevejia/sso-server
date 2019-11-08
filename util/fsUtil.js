@@ -51,12 +51,19 @@ const fsUtil = {
     if (message) {
       throw new Error(message);
     }
-    _.forEach(list, d => {
+    _.forEach(list, (d, i) => {
       if (d.id === model.id) {
-        d = model;
+        list[i] = { ...model };
       }
     });
     fs.writeFileSync(filePath, JSON.stringify(list));
+  },
+  get(fileName, id, callback) {
+    let list = fsUtil.read(fileName);
+    let item = _.find(list, d => {
+      return d.id == id;
+    });
+    return item || null;
   },
   read(fileName, type = "array") {
     let filePath = `${basePath}${fileName}.json`;
@@ -64,8 +71,10 @@ const fsUtil = {
     let list = [];
     if (exists) {
       list = JSON.parse(fs.readFileSync(filePath));
-      return list;
     }
+    return list.filter(d => {
+      return !d.isDeleted;
+    });
   }
 };
 module.exports = exports = fsUtil;
