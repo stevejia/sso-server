@@ -2,27 +2,30 @@ const fs = require("fs");
 const basePath = "./data/";
 const _ = require("lodash");
 const fsUtil = {
-  insert(fileName, model, callback) {
+  insert(fileName, data, callback) {
+    let models = [];
+    if (!(data instanceof Array)) {
+      models = [data];
+    } else {
+      models = [...data];
+    }
+
     let filePath = `${basePath}${fileName}.json`;
     let exists = fs.existsSync(filePath);
     let list = [];
     if (!exists) {
-      model["id"] = 1;
-      list = [model];
+      _.forEach(models, (model, i) => {
+        model["id"] = i + 1;
+      });
+      list = models;
     } else {
       list = fsUtil.read(fileName);
-      let message = null;
-      if (callback) {
-        message = callback(list, model);
-      }
-      if (message) {
-        throw new Error(message);
-      }
-      model["id"] = list.length + 1;
-      list.push(model);
-      fs.writeFileSync(filePath, JSON.stringify(list));
-    }
 
+      _.forEach(models, (model, i) => {
+        model["id"] = list.length + i + 1;
+      });
+      list = [...list, ...models];
+    }
     let message = null;
     if (callback) {
       message = callback(list);
@@ -30,12 +33,8 @@ const fsUtil = {
     if (message) {
       throw new Error(message);
     }
-    _.forEach(list, d => {
-      if (d.id === model.id) {
-        d = model;
-      }
-    });
     fs.writeFileSync(filePath, JSON.stringify(list));
+    return models;
   },
   update(fileName, model, callback) {
     let filePath = `${basePath}${fileName}.json`;

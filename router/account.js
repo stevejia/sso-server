@@ -11,49 +11,32 @@ const tokenGen = require("../util/token");
 
 const YUAN_CHUANG = 1;
 const fileName = "userList";
+
+const classifiesApi = require("../ba/classifies");
+const commentApi = require("../ba/comments");
+const accountApi = require("../ba/account");
+
+const articleApi = require("../ba/articles");
+const subscribeApi = require("../ba/subscribe");
 router.post(
   "/login",
   wrap(async function(req, res) {
     let user = req.body;
-    const userList = fs.read(fileName);
-    let userForLogin = _.find(userList, function(d) {
-      return d.name === user.name;
-    });
-    if (!userForLogin) {
-      res.status(500).send("用户不存在");
-      return;
-    }
-    if (userForLogin.password !== user.password) {
-      res.status(500).send("密码错误");
-      return;
-    }
+    let userForLogin = await accountApi.login(user);
     let token = tokenGen.createToken({
       userName: userForLogin.name,
       userId: userForLogin.id
     });
     localStorage.setItem(`${userForLogin.id}`, token);
-    console.log(token);
-    res.status(200).send({ token, userInfo: userForLogin });
+    res.send({ token, userInfo: userForLogin });
   })
 );
 router.post(
   "/register",
   wrap(async function(req, res) {
     let user = req.body;
-    const userList = fs.read(fileName);
-    let existUser = _.find(userList, function(d) {
-      return d.name === user.name;
-    });
-    if (!!existUser) {
-      res.status(500).send("用户名已存在");
-      return;
-    }
-    user["id"] = userList.length + 1;
-    userList.push(user);
-    fs.insert(fileName, user, list => {
-      console.log("aaaa");
-    });
-    res.status(200).send();
+    await accountApi.register(user);
+    res.send();
     return;
   })
 );
@@ -62,13 +45,13 @@ router.get(
   wrap(async function(req, res) {
     var token = localStorage.getItem("admin_token");
     if (!token) {
-      res.sendStatus(401);
+      res.status(401).send();
       return;
     }
     var data = await http.get("account/CheckLogin", { oldToken: token });
     var newToken = data.Data.newToken;
     localStorage.setItem("admin_token", newToken);
-    res.sendStatus(200);
+    res.send();
     return;
   })
 );
@@ -86,62 +69,18 @@ router.post(
 router.get(
   "/getByArticleId",
   wrap(async function(req, res) {
-    let list = fs.read("articles");
-    let item = _.find(list, d => {
-      return d.id === +req.query.id;
-    });
-    let userId = item.creatorId;
-    let userList = fs.read("userList");
-    let user = _.find(userList, d => {
-      return +d.id === +userId;
-    });
-    let userArticleList = _.filter(list, d => {
-      return d.creatorId === userId;
-    });
-
-    let newestArticles = _.chain(userArticleList)
-      .sortBy("createTime")
-      .reverse()
-      .filter((d, i) => {
-        return i < 5;
-      })
-      .value();
-    let originalCount = userArticleList.filter(d => {
-      return +d.articleType === YUAN_CHUANG;
-    }).length;
-
-    let subscribeList = fs.read("subscribe");
-    let userSubList = _.filter(subscribeList, d => {
-      return d.id == userId;
-    });
-    res.status(200).send({ newestArticles, originalCount, user, userSubList });
+    let articleId = req.query.id;
+    let result = await getUserBlogInfo(articleId);
+    res.status(200).send(result);
     return;
   })
 );
 router.get(
   "/getById",
   wrap(async function(req, res) {
-    let list = fs.read("articles");
     let userId = req.query.id;
-    let userList = fs.read("userList");
-    let user = _.find(userList, d => {
-      return +d.id === +userId;
-    });
-    let userArticleList = _.filter(list, d => {
-      return d.creatorId === userId;
-    });
-
-    let newestArticles = _.chain(userArticleList)
-      .sortBy("createTime")
-      .reverse()
-      .filter((d, i) => {
-        return i < 5;
-      })
-      .value();
-    let originalCount = userArticleList.filter(d => {
-      return +d.articleType === YUAN_CHUANG;
-    }).length;
-    res.status(200).send({ newestArticles, originalCount, user });
+    let result = await getUserBlogInfo(userId, false);
+    res.status(200).send(result);
     return;
   })
 );
@@ -167,5 +106,65 @@ router.post(
     return;
   })
 );
+
+const getUserBlogInfo = async (id, isArticle = true) => {
+  let userId = id;
+  if (isArticle) {
+    let article = await articleApi.get(id);
+    userId = article.creatorId;
+  }
+  let user = await accountApi.get(userId);
+
+  let userArticleList = await articleApi.list({ creatorId: userId });
+  let newestArticles = _.chain(userArticleList)
+    .sortBy("createTime")
+    .reverse()
+    .filter((d, i) => {
+      return i < 5;
+    })
+    .value();
+  let originalCount = userArticleList.filter(d => {
+    return +d.articleType === YUAN_CHUANG;
+  }).length;
+
+  let userSubList = await subscribeApi.list({ userId });
+
+  let userClassifies = await classifiesApi.list({ userId: userId });
+
+  _.forEach(userClassifies, d => {
+    let articles = _.filter(userArticleList, r => {
+      return (
+        _.filter(r.classifies, k => {
+          return k.id == d.id;
+        }).length > 0
+      );
+    });
+    d["articleCount"] = articles.length;
+  });
+
+  let userComments = await commentApi.query({ commentUserId: userId });
+  let newestComments = _.chain(userComments)
+    .filter((d, i) => {
+      return i < 5;
+    })
+    .sortBy("createTime")
+    .reverse()
+    .map(d => {
+      let article = _.find(userArticleList, r => {
+        return r.id == d.articleId;
+      });
+      return { ...d, ...{ title: article.title } };
+    })
+    .value();
+
+  return {
+    newestArticles,
+    originalCount,
+    user,
+    userSubList,
+    userClassifies,
+    newestComments
+  };
+};
 
 module.exports = exports = router;
